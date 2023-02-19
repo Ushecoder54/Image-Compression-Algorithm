@@ -1,0 +1,8 @@
+from PIL import Image
+
+# Open the image
+img = Image.open('input_image.jpg')
+
+# Compress the image using JPEG format with a quality of 80%
+img.save('compressed_image.jpg', optimize=True, quality=80)
+
