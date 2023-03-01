@@ -1,0 +1,50 @@
+import numpy as np
+from scipy.fftpack import dct
+from scipy.signal import convolve2d
+from skimage import io
+import math
+
+def jpeg_encode(img):
+    # Convert the image to YCbCr color space
+    ycbcr = io.imread(img, as_gray=False)
+    ycbcr = io.rgb2ycbcr(ycbcr)
+
+    # Split the YCbCr channels
+    y = ycbcr[:, :, 0]
+    cb = ycbcr[:, :, 1]
+    cr = ycbcr[:, :, 2]
+
+    # Perform 8x8 block-wise DCT on Y channel
+    y_blocks = np.zeros(y.shape)
+    for i in range(0, y.shape[0], 8):
+        for j in range(0, y.shape[1], 8):
+            y_blocks[i:i+8, j:j+8] = dct(dct(y[i:i+8, j:j+8].T, norm='ortho').T, norm='ortho')
+
+    # Quantize Y blocks using a quantization matrix
+    quantization_matrix = np.array([[16, 11, 10, 16, 24, 40, 51, 61],
+                                    [12, 12, 14, 19, 26, 58, 60, 55],
+                                    [14, 13, 16, 24, 40, 57, 69, 56],
+                                    [14, 17, 22, 29, 51, 87, 80, 62],
+                                    [18, 22, 37, 56, 68, 109, 103, 77],
+                                    [24, 35, 55, 64, 81, 104, 113, 92],
+                                    [49, 64, 78, 87, 103, 121, 120, 101],
+                                    [72, 92, 95, 98, 112, 100, 103, 99]])
+    y_quantized = np.zeros(y_blocks.shape)
+    for i in range(0, y_blocks.shape[0], 8):
+        for j in range(0, y_blocks.shape[1], 8):
+            y_quantized[i:i+8, j:j+8] = np.round(y_blocks[i:i+8, j:j+8] / quantization_matrix)
+
+    # Flatten and zigzag scan the quantized Y blocks
+    y_flat = np.zeros(y_quantized.size)
+    for i in range(0, y_quantized.shape[0], 8):
+        for j in range(0, y_quantized.shape[1], 8):
+            block = y_quantized[i:i+8, j:j+8].flatten()
+            for k in range(len(block)):
+                y_flat[math.floor(k / 8) * 8 + (k % 8) + (i * y.shape[1] + j)] = block[k]
+
+    # Perform Huffman coding on the flattened Y blocks
+    y_dc = np.zeros(len(y_flat))
+    y_dc[0] = y_flat[0]
+    for i in range(1, len(y_flat)):
+       
+
